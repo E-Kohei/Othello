@@ -1082,18 +1082,19 @@ def getAllStatesFromRecord(record, normalize_state=False, normalize_disc=False, 
     states = []
     moves = []
     for i, m in enumerate(record):
-        splitted = m.split('-')
-        r = int(splitted[0]) - 1
-        c = int(splitted[1]) - 1
-        moves.append( (r,c) )
+        if m == "---":
+            # end of the game
+            break
+        else:
+            splitted = m.split('-')
+            r = int(splitted[0])
+            c = int(splitted[1])
+            moves.append( (r,c) )
     game = Othello(8)
 
     # simulate moves
     next_mover = DARK_PLAYER
     for i, m in enumerate(moves):
-        if m == (-1,-1):
-            # end of the game
-            break
         
         if next_mover == DARK_PLAYER:
             if Othello.isAvailablePosition(game.state, m[0], m[1], BLACK, WHITE):

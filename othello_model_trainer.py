@@ -122,16 +122,24 @@ with open(csvfilename) as f:
     data = []
     for row in reader:
         try:
-            last_move_index = row.index("0_0")
+            end_index = row.index("---")
         except ValueError:
-            last_move_index = 65
+            end_index = 60
+        real_score = int(row[3])
         theo_score = int(row[4])
-        #num_disc = last_move_index - 1
-        #states = getAllStatesFromRecord(row[5:last_move_index])
-        data.append({
-            "record": row[5:last_move_index],
-            "label": 1 if theo_score > 32 else 0  # 1 if dark side would win
-        })
+        num_disc = end_index + 4
+        if num_disc <= 64 - depth:
+            # use real score
+            data.append({
+                "record": row[5:],
+                "label": 1 if score > (num_disc/2) else 0
+            })
+        else:
+            # use theorical score
+            data.append({
+                "record": row[5:],
+                "label": 1 if theo_score > 32 else 0  # 1 if dark side would win
+            })
 
 
 # train neural network
@@ -143,9 +151,10 @@ x_train_late = []
 y_train_late = []
 # all states extracted by the records will be too large,
 # so separate data into some groups and train the model
-for i in range(num_matches//500 + 1):
+batch_size = 1000
+for i in range(num_matches//batch_size + 1):
     print(f"training with {i}th group")
-    for j in range(500*i, min(num_matches, 500*(i+1))):
+    for j in range(batch_size*i, min(num_matches, batch_size*(i+1))):
         states = getAllStatesFromRecord(data[j]["record"], False, True, True)
         num_blank = states[-1].tolist().count(0)
         label = data[j]["label"]
@@ -156,18 +165,17 @@ for i in range(num_matches//500 + 1):
             x_train_late.extend(states)
             for _ in range(len(states)):
                 y_train_late.append( (label, 1-label) )
-            continue
-
-        # otherwise, separate training data
-        x_train_early.extend(states[:60-depth])
-        for _ in range(60-depth):
-            y_train_early.append( (label, 1-label) )
-        x_train_late.extend(states[60-depth:])
-        for _ in range(depth-num_blank):
-            y_train_late.append( (label, 1-label) )
+        else:
+            # otherwise, separate training data
+            x_train_early.extend(states[:60-depth])
+            for _ in range(60-depth):
+                y_train_early.append( (label, 1-label) )
+            x_train_late.extend(states[60-depth:])
+            for _ in range(depth-num_blank):
+                y_train_late.append( (label, 1-label) )
     # Since early part is less informative, we make the model
     # learn much from the late part
-    model.fit(np.array(x_train_early), y_train_early, epochs=5)
+    model.fit(np.array(x_train_early), y_train_early, epochs=10)
     model.fit(np.array(x_train_late), y_train_late, epochs=20)
     x_train_early.clear()
     y_train_early.clear()
