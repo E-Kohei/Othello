@@ -132,7 +132,7 @@ with open(csvfilename) as f:
             # use real score
             data.append({
                 "record": row[5:],
-                "label": 1 if score > (num_disc/2) else 0
+                "label": 1 if real_score > (num_disc/2) else 0
             })
         else:
             # use theorical score
@@ -175,8 +175,8 @@ for i in range(num_matches//batch_size + 1):
                 y_train_late.append( (label, 1-label) )
     # Since early part is less informative, we make the model
     # learn much from the late part
-    model.fit(np.array(x_train_early), y_train_early, epochs=10)
-    model.fit(np.array(x_train_late), y_train_late, epochs=20)
+    model.fit(np.array(x_train_early), np.array(y_train_early), epochs=10)
+    model.fit(np.array(x_train_late), np.array(y_train_late), epochs=20)
     x_train_early.clear()
     y_train_early.clear()
     x_train_late.clear()
