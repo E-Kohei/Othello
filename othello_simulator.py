@@ -8,14 +8,14 @@ if len(sys.argv) < 3:
     raise SyntaxError("Enter some file for othello record")
 
 csvfilename = sys.argv[1]
-skip = int(sys.argv[2])
+line = int(sys.argv[2])
 
 with open(csvfilename) as f:
     reader = csv.reader(f)
     next(reader)
     next(reader)
 
-    for _ in range(skip):
+    for _ in range(line):
         next(reader)
 
     data = next(reader)
