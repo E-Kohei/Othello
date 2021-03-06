@@ -1,4 +1,4 @@
-import winsound
+#import winsound
 import time
 import random
 import tensorflow as tf
@@ -37,9 +37,9 @@ class MinMaxOthelloAgent(OthelloPlayer):
             state = self.environment.getState()
             print(f"current score: {self.evaluate(state)}")
             print(f"expected score: {score}")
-            for i in range(2):
-                winsound.MessageBeep()
-                time.sleep(0.7)
+            #for i in range(2):
+            #    winsound.MessageBeep()
+            #    time.sleep(0.7)
             return action
 
     def evaluate(self, state):

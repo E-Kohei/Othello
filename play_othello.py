@@ -1,5 +1,5 @@
 import sys
-import winsound
+#import winsound
 import time
 import random
 

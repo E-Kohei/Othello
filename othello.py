@@ -1,7 +1,7 @@
 import re
 import numpy as np
 
-from base81 import *
+#from base81 import *
 
 
 # Error class which will be raised when a user took some invalid action
