@@ -1,3 +1,4 @@
+import sys
 import csv
 
 from othello import *
@@ -9,12 +10,10 @@ if len(sys.argv) < 3:
 csvfilename = sys.argv[1]
 skip = int(sys.argv[2])
 
-with open("othello_data\\WTH_2015.csv") as f:
+with open(csvfilename) as f:
     reader = csv.reader(f)
     next(reader)
     next(reader)
-
-    skip = 881
 
     for _ in range(skip):
         next(reader)
