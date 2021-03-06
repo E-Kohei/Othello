@@ -64,9 +64,15 @@ try:
         # latter 60-byte data represents moves
         for j in range(59):
             move = str(unpack('b', infile.read(1))[0]).zfill(2)
-            outfile.writelines(f"{move[0]}-{move[1]},")
+            if move == "00": # the game is already over
+                outfile.writelines("---,")
+            else:
+                outfile.writelines(f"{int(move[0])-1}-{int(move[1])-1},")
         move = str(unpack('b', infile.read(1))[0]).zfill(2)
-        outfile.writelines(f"{move[0]}-{move[1]}\n")
+        if move == "00": # the game is already over
+            outfile.writelines("---\n")
+        else:
+            outfile.writelines(f"{int(move[0])-1}-{int(move[1])-1}\n")
 
 finally:
     infile.close()
