@@ -76,10 +76,13 @@ if __name__ == '__main__':
         outfile = open(outfilename, mode='w')
         reader = csv.reader(infile)
 
-        header1 = next(reader)
-        header2 = next(reader)
-        outfile.writelines(",".join(header1) + "\n")
-        outfile.writelines(",".join(header2) + "\n")
+        filedata = next(reader)
+        header = next(reader)
+
+        num_matches = int(filedata[2].split(':')[1]) * 4
+        filedata[2] = f"number of matches : {num_matches}"
+        outfile.writelines(",".join(filedata) + "\n")
+        outfile.writelines(",".join(header) + "\n")
 
         for row in reader:
             moves = row[5:]
