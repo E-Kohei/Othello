@@ -1,32 +1,57 @@
 import sys
 import csv
+import argparse
 
 from othello import *
 
 
-if len(sys.argv) < 3:
-    raise SyntaxError("Enter some file for othello record")
+def searchMove(data):
+    for i, d in enumerate(data):
+        if len(d) == 3 and \
+           d[0].isdigit() and d[1] == '-' and d[2].isdigit():
+           return data[i:i+60]
+    return None
 
-csvfilename = sys.argv[1]
-line = int(sys.argv[2])
+parser = argparse.ArgumentParser("Simulate othello game from record")
+fileGroup = parser.add_argument_group()
+strGroup = parser.add_argument_group()
 
-with open(csvfilename) as f:
-    reader = csv.reader(f)
-    next(reader)
-    next(reader)
+fileGroup.add_argument("-f", "--csvfile",
+                       help="csv file with records")
+fileGroup.add_argument("-l", "--line",
+                       type=int,
+                       help="line of record to simulate")
 
-    for _ in range(line):
-        next(reader)
+strGroup.add_argument("-s", "--string",
+                      help="record string to simulate")
 
-    data = next(reader)
-    moves = data[5:]
-    score = data[3]
+args = parser.parse_args()
+
+moves = None
+if args.csvfile:
+    with open(args.csvfile) as f:
+        reader = csv.reader(f)
+
+        for _ in range(args.line-1):
+            next(reader)
+
+        data = next(reader)
+        moves = searchMove(data)
+elif args.string:
+    moves = args.string.split(",")
+
+if moves is None:
+    raise Exception("Invalid record!")
 
 for i, m in enumerate(moves):
-    splitted = m.split('-')
-    r = int(splitted[0]) - 1
-    c = int(splitted[1]) - 1
-    moves[i] = (r,c)
+    if m == "---":
+        # end of the game
+        break
+    else:
+        splitted = m.split('-')
+        r = int(splitted[0])
+        c = int(splitted[1])
+        moves[i] = (r,c)
 
 
 game = Othello(8)
@@ -37,7 +62,7 @@ LIGHT_PLAYER = 1
 # simulate moves
 next_mover = DARK_PLAYER
 for i, m in enumerate(moves):
-    if m == (-1,-1):
+    if m == "---":
         # end of the game
         break
     
@@ -78,4 +103,3 @@ for i, m in enumerate(moves):
     print()
 
 print(f"score: {game.score()}")
-print(score)
