@@ -22,9 +22,9 @@ def getPlayerFromStateChange(before, after):
     num_black_before = before.flatten().tolist().count(BLACK)
     num_black_after = after.flatten().tolist().count(BLACK)
     if num_black_before < num_black_after:
-        return "dark player"
+        return "dark_player"
     elif num_black_before > num_black_after:
-        return "light player"
+        return "light_player"
     else:  # maybe same state
         return None
         
@@ -76,6 +76,10 @@ if __name__ == '__main__':
                         type=int,
                         default=2,
                         help="line of record to simulate")
+    parser.add_argument("-p", "--player-columns",
+                        type=int,
+                        nargs=2,
+                        help="column of players' name")
     srcGroup.add_argument("-s", "--string",
                           help="record string to simulate")
 
@@ -91,6 +95,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     moves = None
+    players = {
+        "dark_player" : "dark player",
+        "light_player" : "light player"
+    }
     if args.csvfile:
         with open(args.csvfile) as f:
             reader = csv.reader(f)
@@ -100,6 +108,9 @@ if __name__ == '__main__':
 
             data = next(reader)
             moves = searchMove(data)
+            if args.player_columns:
+                players["dark_player"] = data[args.player_columns[0]]
+                players["light_player"] = data[args.player_columns[1]]
     elif args.string:
         moves = args.string.split(",")
 
@@ -132,7 +143,7 @@ if __name__ == '__main__':
             plt.plot(xs, evals, color="red", label="AI")
             plt.title("Score and Evaluation by AI")
         plt.xlabel("moves")
-        plt.ylabel("percentage")
+        plt.ylabel("percentage of black")
         plt.legend()
         plt.ylim(0.0, 1.0)
 
@@ -161,6 +172,9 @@ if __name__ == '__main__':
                             lw=1.0)
         move_text = plt.text(0.1, 0.075, f"move: 0")
         score_text = plt.text(0.1, 0.025, f"score: (2,2)")
+        players_text = plt.text(0.5, 0.975,
+            f"{players['dark_player']} vs {players['light_player']}",
+            horizontalalignment='center', verticalalignment='center')
         
         def onclick(event):
             global current_index, all_states, bscat, wscat
@@ -202,7 +216,9 @@ if __name__ == '__main__':
                 print("Start of the game")
                 print(game)
             else:
-                player = getPlayerFromStateChange(all_states[i-1], s)
+                player = players[getPlayerFromStateChange(
+                    all_states[i-1], s
+                )]
                 print(f"{i}th turn: {player} chose {moves[i-1]}")
                 print(game)
         print(f"score: {game.score()}")
