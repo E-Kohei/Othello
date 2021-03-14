@@ -1,3 +1,4 @@
 __pycache__/
 records/
+models/
 othello_model_trainer.sh
