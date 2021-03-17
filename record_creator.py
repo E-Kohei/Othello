@@ -4,8 +4,11 @@
 
 import sys
 import random, csv
+import argparse
 
 from othello import *
+from othello_models import NumDiscMinMaxOthelloAgent
+from othello_simulator import searchMove, getPlayerFromStateChange
 
 
 # turn right
@@ -66,33 +69,136 @@ def generateAllTransformedMoves(moves, state_size=8):
     moves_set.append(transformMoves(moves, [fliplr, rotate], state_size=state_size))
     moves_set.append(transformMoves(moves, [fliplr, rotate, rotate, rotate], state_size=state_size))
     return moves_set
-
+    
 
 if __name__ == '__main__':
-    infilename = sys.argv[1]
-    outfilename = sys.argv[2]
-    try:
-        infile = open(infilename, mode='r')
-        outfile = open(outfilename, mode='w')
-        reader = csv.reader(infile)
+    parser = argparse.ArgumentParser(
+        description="Modify and create record file"
+    )
+    subparsers = parser.add_subparsers(
+        dest="subparser_name",
+        required=True,
+        help="sub-command help"
+    )
+    
+    # extend csv file
+    parser_extend = subparsers.add_parser("extend",
+        help="Create new records from others by transforming them")
+    parser_extend.add_argument("infile", help="record file to extend")
+    parser_extend.add_argument("outfile", help="output file")
+    parser_extend.add_argument("--use-wth-format", action="store_true",
+        help="use WTH csv file, which includes some additional data")
+    
+    # change csv file to WTH format
+    parser_wth = subparsers.add_parser("towth",
+        help="Change csv file to WTH format")
+    parser_wth.add_argument("infile", help="record file to alter")
+    parser_wth.add_argument("outfile", help="output file")
+    
+    # analyze records and add theorical score
+    parser_theo = subparsers.add_parser("analyze",
+        help="Analyze each record and add theorical score field")
+    parser_theo.add_argument("infile", help="record file to analyze")
+    parser_theo.add_argument("outfile", help="output file")
+    parser_theo.add_argument("--header", type=int, default=1,
+        help="line of header")
+    parser_theo.add_argument("--depth", type=int, default=10,
+            help="depth of analyze")
+    
+    args = parser.parse_args()
+    
+    if args.subparser_name == "extend":
+        infilename = args.infile
+        outfilename = args.outfile
+        try:
+            infile = open(infilename, mode='r')
+            outfile = open(outfilename, mode='w')
+            reader = csv.reader(infile)
+            
+            if args.use_wth_format:
+                filedata = next(reader)
+                header = next(reader)
 
-        filedata = next(reader)
-        header = next(reader)
+                num_matches = int(filedata[2].split(':')[1]) * 4
+                filedata[2] = f"number of matches : {num_matches}"
+                outfile.writelines(",".join(filedata) + "\n")
+                outfile.writelines(",".join(header) + "\n")
 
-        num_matches = int(filedata[2].split(':')[1]) * 4
-        filedata[2] = f"number of matches : {num_matches}"
-        outfile.writelines(",".join(filedata) + "\n")
-        outfile.writelines(",".join(header) + "\n")
+                for row in reader:
+                    moves = row[7:]
+                    all_moves_set = generateAllTransformedMoves(moves)
+                    for new_moves in all_moves_set:
+                        row2 = row[:7]
+                        row2.extend(new_moves)
+                        outfile.writelines(",".join(row2) + "\n")
+            else:
+                header = next(reader)
+                outfile.writelines(",".join(header) + "\n")
+                for row in reader:
+                    moves = searchMove(row)
+                    all_moves_set = generateAllTransformedMoves(moves)
+                    for new_moves in all_moves_set:
+                        row2 = row[:-60]
+                        row2.extend(new_moves)
+                        outfile.writelines(",".join(row2) + "\n")
 
-        for row in reader:
-            moves = row[5:]
-            all_moves_set = generateAllTransformedMoves(moves)
-            for new_moves in all_moves_set:
-                row2 = row[:5]
-                row2.extend(new_moves)
+        finally:
+            infile.close()
+            outfile.close()
+            
+    elif args.subparser_name == "towth":
+        pass
+    
+    elif args.subparser_name == "analyze":
+        infilename = args.infile
+        outfilename = args.outfile
+        try:
+            infile = open(infilename, mode='r')
+            outfile = open(outfilename, mode='w')
+            reader = csv.reader(infile)
+            
+            for _ in range(args.header-1):
+                next(reader)
+            header = next(reader)
+            dscore = header.index("dark_score")
+            lscore = header.index("light_score")
+            first_move = header.index("moves")
+            header.insert(first_move, "light_theo_score")
+            header.insert(first_move, "dark_theo_score")
+            outfile.writelines(",".join(header) + "\n")
+            
+            depth = args.depth
+            ai = NumDiscMinMaxOthelloAgent(depth=args.depth+1)
+            game = Othello(8)
+            for row in reader:
+                moves = searchMove(row)
+                all_states = getAllStatesFromRecord(moves)
+                if len(all_states) <= 60 - args.depth:
+                    dtheo_score = row[dscore]
+                    ltheo_score = row[lscore]
+                else:
+                    game.state = all_states[60-depth]
+                    player = getPlayerFromStateChange(
+                        all_states[60-depth-1], all_states[60-depth]
+                    )
+                    if player == "dark_player":
+                        ai.setOrder(LIGHT_PLAYER)
+                        action, score = ai.findMaxInMins(game.state,
+                                                         args.depth+1)
+                        dtheo_score = int(64*(1-score))
+                        ltheo_score = int(64*score)
+                    else:
+                        ai.setOrder(DARK_PLAYER)
+                        action, score = ai.findMaxInMins(game.state,
+                                                         args.depth+1)
+                        dtheo_score = int(64*score)
+                        ltheo_score = int(64*(1-score))
+                row2 = row[:first_move]
+                row2.extend([str(dtheo_score), str(ltheo_score)])
+                row2.extend(moves)
+                print(",".join(row2))
                 outfile.writelines(",".join(row2) + "\n")
-
-    finally:
-        infile.close()
-        outfile.close()
         
+        finally:
+            infile.close()
+            outfile.close()

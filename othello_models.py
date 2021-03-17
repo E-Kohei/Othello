@@ -171,6 +171,13 @@ class MinMaxOthelloAgent(OthelloPlayer):
         else:
             return (min_action, min_score)
 
+class NumDiscMinMaxOthelloAgent(MinMaxOthelloAgent):
+    
+    # override evaluate function
+    def evaluate(self, state):
+        """Evaluation function which simply counts up discs"""
+        score = Othello.smScore(state)
+        return score[self.order] / (score[0] + score[1])
 
 class CornerWeightedMinMaxOthelloAgent(MinMaxOthelloAgent):
 
