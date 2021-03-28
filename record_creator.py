@@ -5,10 +5,12 @@
 import sys
 import random, csv
 import argparse
+import subprocess
 
 from othello import *
 from othello_models import NumDiscMinMaxOthelloAgent
 from othello_simulator import searchMove, getPlayerFromStateChange
+
 
 
 # turn right
@@ -86,6 +88,8 @@ if __name__ == '__main__':
         help="Create new records from others by transforming them")
     parser_extend.add_argument("infile", help="record file to extend")
     parser_extend.add_argument("outfile", help="output file")
+    parser_extend.add_argument("--header-line", type=int, default=1,
+                               help="line of header")
     parser_extend.add_argument("--use-wth-format", action="store_true",
         help="use WTH csv file, which includes some additional data")
     
@@ -100,10 +104,12 @@ if __name__ == '__main__':
         help="Analyze each record and add theorical score field")
     parser_theo.add_argument("infile", help="record file to analyze")
     parser_theo.add_argument("outfile", help="output file")
-    parser_theo.add_argument("--header", type=int, default=1,
-        help="line of header")
+    parser_theo.add_argument("--header-line", type=int, default=1,
+                             help="line of header")
     parser_theo.add_argument("--depth", type=int, default=10,
-            help="depth of analyze")
+                             help="depth of analyze")
+    parser_theo.add_argument("--use-theoscore", action="store_true",
+                             help="use theoretical score provided in the file")
     
     args = parser.parse_args()
     
@@ -112,35 +118,31 @@ if __name__ == '__main__':
         outfilename = args.outfile
         try:
             infile = open(infilename, mode='r')
-            outfile = open(outfilename, mode='w')
-            reader = csv.reader(infile)
+            outfile = open(outfilename, mode='w', newline='')
             
             if args.use_wth_format:
-                filedata = next(reader)
-                header = next(reader)
-
+                filedata = infile.readline().split(',')
                 num_matches = int(filedata[2].split(':')[1]) * 4
                 filedata[2] = f"number of matches : {num_matches}"
-                outfile.writelines(",".join(filedata) + "\n")
-                outfile.writelines(",".join(header) + "\n")
-
-                for row in reader:
-                    moves = row[7:]
-                    all_moves_set = generateAllTransformedMoves(moves)
-                    for new_moves in all_moves_set:
-                        row2 = row[:7]
-                        row2.extend(new_moves)
-                        outfile.writelines(",".join(row2) + "\n")
+                outfile.writelines(",".join(filedata))
             else:
-                header = next(reader)
-                outfile.writelines(",".join(header) + "\n")
-                for row in reader:
-                    moves = searchMove(row)
-                    all_moves_set = generateAllTransformedMoves(moves)
-                    for new_moves in all_moves_set:
-                        row2 = row[:-60]
-                        row2.extend(new_moves)
-                        outfile.writelines(",".join(row2) + "\n")
+                if args.header_line != 1:
+                    for _ in range(args.header_line-1):
+                        skip = infile.readline()
+                        outfile.writelines(skip)
+                    
+            reader = csv.DictReader(infile)
+            header = reader.fieldnames
+            writer = csv.DictWriter(outfile, header, lineterminator='\n')
+            writer.writeheader()
+            for row in reader:
+                moves = [row[f"{i}"] for i in range(60)]
+                all_moves_set = generateAllTransformedMoves(moves)
+                for new_moves in all_moves_set:
+                    row2 = row.copy()
+                    for i in range(60):
+                        row2[f"{i}"] = new_moves[i]
+                    writer.writerow(row2)
 
         finally:
             infile.close()
@@ -154,50 +156,66 @@ if __name__ == '__main__':
         outfilename = args.outfile
         try:
             infile = open(infilename, mode='r')
-            outfile = open(outfilename, mode='w')
-            reader = csv.reader(infile)
-            
-            for _ in range(args.header-1):
-                next(reader)
-            header = next(reader)
-            dscore = header.index("dark_score")
-            lscore = header.index("light_score")
-            first_move = header.index("moves")
-            header.insert(first_move, "light_theo_score")
-            header.insert(first_move, "dark_theo_score")
-            outfile.writelines(",".join(header) + "\n")
-            
+            outfile = open(outfilename, mode='w', newline='')
             depth = args.depth
-            ai = NumDiscMinMaxOthelloAgent(depth=args.depth+1)
-            game = Othello(8)
-            for row in reader:
-                moves = searchMove(row)
-                all_states = getAllStatesFromRecord(moves)
-                if len(all_states) <= 60 - args.depth:
-                    dtheo_score = row[dscore]
-                    ltheo_score = row[lscore]
-                else:
-                    game.state = all_states[60-depth]
-                    player = getPlayerFromStateChange(
-                        all_states[60-depth-1], all_states[60-depth]
-                    )
-                    if player == "dark_player":
-                        ai.setOrder(LIGHT_PLAYER)
-                        action, score = ai.findMaxInMins(game.state,
-                                                         args.depth+1)
-                        dtheo_score = int(64*(1-score))
-                        ltheo_score = int(64*score)
+            
+            if args.header_line != 1:
+                for _ in range(args.header_line-1):
+                    skip = infile.readline()
+                    outfile.writelines(skip)
+            
+            reader = csv.DictReader(infile)
+            header = reader.fieldnames
+            for i in range(60):
+                header.append( f"l{i}" )
+            writer = csv.DictWriter(outfile, header, lineterminator='\n')
+            writer.writeheader()
+            
+            if args.use_theoscore:
+                for row in reader:
+                    theo_scores = ["-" for _ in range(60)]
+                    theo_score = int(row["theoretical_score"])
+                    if theo_score > 32:
+                        for i in range(depth):
+                            theo_scores[-i-1] = 1
                     else:
-                        ai.setOrder(DARK_PLAYER)
-                        action, score = ai.findMaxInMins(game.state,
-                                                         args.depth+1)
-                        dtheo_score = int(64*score)
-                        ltheo_score = int(64*(1-score))
-                row2 = row[:first_move]
-                row2.extend([str(dtheo_score), str(ltheo_score)])
-                row2.extend(moves)
-                print(",".join(row2))
-                outfile.writelines(",".join(row2) + "\n")
+                        for i in range(depth):
+                            theo_scores[-i-1] = 0
+                    row2 = row.copy()
+                    for i in range(60):
+                        row2[f"l{i}"] = theo_scores[i]
+                    writer.writerow(row2)
+            else:
+                row_num = 1
+                for row in reader:
+                    theo_scores = ["-" for _ in range(60)]
+                    moves = [row[f"{i}"] for i in range(60)]
+                    # exclude the terminal state because theoretical score is
+                    # meaningless for the terminal state
+                    states = getAllStatesFromRecord(moves)
+                    length = len(states)
+                    for i in range(length-1):
+                        if 60 - i <= depth:
+                            flattened = states[i].flatten().tolist()
+                            stateString = ",".join([str(d) for d in flattened])
+                            order = getPlayerFromStateChange(states[i], states[i+1])
+                            result = subprocess.run(["./cpp/othello", stateString,
+                                                     str(order), "-2"],
+                                                    capture_output=True)
+                            action_score = result.stdout.decode()[:-1].split(',')
+                            score = float(action_score[2])
+                            if score > 0.5:
+                                theo_scores[i] = 1
+                            elif score < 0.5:
+                                theo_scores[i] = 0
+                            else:
+                                theo_scores[i] = 0.5
+                    row2 = row.copy()
+                    for i in range(60):
+                        row2[f"l{i}"] = theo_scores[i]
+                    writer.writerow(row2)
+                    print(f"row {row_num} analyzed")
+                    row_num += 1
         
         finally:
             infile.close()

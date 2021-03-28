@@ -18,16 +18,6 @@ def searchMove(data):
            return data[i:i+60]
     return None
 
-def getPlayerFromStateChange(before, after):
-    num_black_before = before.flatten().tolist().count(BLACK)
-    num_black_after = after.flatten().tolist().count(BLACK)
-    if num_black_before < num_black_after:
-        return "dark_player"
-    elif num_black_before > num_black_after:
-        return "light_player"
-    else:  # maybe same state
-        return None
-        
 
 def drawButton(box, text):
     x0 = box.x0
@@ -96,8 +86,8 @@ if __name__ == '__main__':
 
     moves = None
     players = {
-        "dark_player" : "dark player",
-        "light_player" : "light player"
+        DARK_PLAYER : "dark player",
+        LIGHT_PLAYER : "light player"
     }
     if args.csvfile:
         with open(args.csvfile) as f:
@@ -109,8 +99,8 @@ if __name__ == '__main__':
             data = next(reader)
             moves = searchMove(data)
             if args.player_columns:
-                players["dark_player"] = data[args.player_columns[0]]
-                players["light_player"] = data[args.player_columns[1]]
+                players[DARK_PLAYER] = data[args.player_columns[0]]
+                players[LIGHT_PLAYER] = data[args.player_columns[1]]
     elif args.string:
         moves = args.string.split(",")
 
@@ -118,10 +108,6 @@ if __name__ == '__main__':
         raise Exception("Invalid record!")
         
     all_states = getAllStatesFromRecord(moves)
-    first = np.full((8,8), BLANK, dtype=np.int16)
-    first[3,3] = first[4,4] = WHITE
-    first[4,3] = first[3,4] = BLACK
-    all_states.insert(0, first)
     game = Othello(8)
     
     if args.model_file:
@@ -173,7 +159,7 @@ if __name__ == '__main__':
         move_text = plt.text(0.1, 0.075, f"move: 0")
         score_text = plt.text(0.1, 0.025, f"score: (2,2)")
         players_text = plt.text(0.5, 0.975,
-            f"{players['dark_player']} vs {players['light_player']}",
+            f"{players[DARK_PLAYER]} vs {players[LIGHT_PLAYER]}",
             horizontalalignment='center', verticalalignment='center')
         
         def onclick(event):
@@ -216,9 +202,9 @@ if __name__ == '__main__':
                 print("Start of the game")
                 print(game)
             else:
-                player = players[getPlayerFromStateChange(
-                    all_states[i-1], s
-                )]
+                player = players[
+                    getPlayerFromStateChange(all_states[i-1], s)
+                ]
                 print(f"{i}th turn: {player} chose {moves[i-1]}")
                 print(game)
         print(f"score: {game.score()}")

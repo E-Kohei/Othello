@@ -56,9 +56,9 @@ try:
         outfile.writelines("tournament id,dark-player id,light-player id,score,theoretical_score,dark_score,light_score,")
     else:
         outfile.writelines("tournament id,dark-player id,light-player id,score,theoretical score,")
-    for j in range(1,60):
+    for j in range(59):
         outfile.writelines(f"{j},")
-    outfile.writelines("60\n")
+    outfile.writelines("59\n")
 
     # read data and write it to the csv file
     for i in range(num_match):

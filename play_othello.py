@@ -51,19 +51,19 @@ if __name__ == "__main__":
 
     # determine second player
     if sys.argv[2] == "CAI":
-        second = CornerWeightedMinMaxOthelloAgent(None, depth=5)
+        second = CornerWeightedMinMaxOthelloAgent(None, depth=4)
         second.name = "Corner weighted AI"
     elif sys.argv[2] == "Hybrid":
-        second = HybridOthelloAgent(None, depth=5,
+        second = HybridOthelloAgent(None, depth=4,
                                    model_file="OthelloAIModel_64_16_16_2_dropout.h5")
         second.name = sys.argv[2]
     elif sys.argv[2] in model_files.keys():
-        second = ModelMinMaxOthelloAgent(None, depth=5,
+        second = ModelMinMaxOthelloAgent(None, depth=4,
                                         model_file=model_files[sys.argv[2]])
         second.name = sys.argv[2]
     elif sys.argv[2][:5] == "file:":
         filename = sys.argv[2][5:]
-        second = ModelMinMaxOthelloAgent(None, depth=5,
+        second = ModelMinMaxOthelloAgent(None, depth=4,
                                          model_file=filename)
         second.name = sys.argv[2]
     else:

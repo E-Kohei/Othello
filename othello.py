@@ -1091,6 +1091,7 @@ def getAllStatesFromRecord(record, normalize_state=False, normalize_disc=False, 
             c = int(splitted[1])
             moves.append( (r,c) )
     game = Othello(8)
+    states.append(game.getState())
 
     # simulate moves
     next_mover = DARK_PLAYER
@@ -1135,3 +1136,92 @@ def getAllStatesFromRecord(record, normalize_state=False, normalize_disc=False, 
             states[i] = s.flatten()
     
     return states
+
+
+def getAllStatesByPlayer(record, normalize_state=False, normalize_disc=False, flatten=False):
+    """get all states and split them into 2 groups"""
+    dark_states = []
+    light_states = []
+    moves = []
+    for i, m in enumerate(record):
+        if m == "---":
+            # end of the game
+            break
+        else:
+            splitted = m.split('-')
+            r = int(splitted[0])
+            c = int(splitted[1])
+            moves.append( (r,c) )
+    game = Othello(8)
+
+    # simulate moves
+    next_mover = DARK_PLAYER
+    for i, m in enumerate(moves):
+        
+        if next_mover == DARK_PLAYER:
+            if Othello.isAvailablePosition(game.state, m[0], m[1], BLACK, WHITE):
+                dark_states.append(game.getState())
+                game.takeAction(m, DARK_PLAYER)
+                next_mover = LIGHT_PLAYER
+            elif Othello.isAvailablePosition(game.state, m[0], m[1], WHITE, BLACK):
+                # This case means that the move m is not one of dark-player
+                # but one of light-player because dark-player had no choice
+                # but to pass his turn.
+                dark_states.append(game.getState())
+                light_states.append(game.getState())
+                game.takeAction(m, LIGHT_PLAYER)
+                next_mover = DARK_PLAYER
+            else:
+                # unexpcted behavior
+                raise ActionError("This move is invalid for both players!")
+        elif next_mover == LIGHT_PLAYER:
+            if Othello.isAvailablePosition(game.state, m[0], m[1], WHITE, BLACK):
+                light_states.append(game.getState())
+                game.takeAction(m, LIGHT_PLAYER)
+                next_mover = DARK_PLAYER
+            elif Othello.isAvailablePosition(game.state, m[0], m[1], BLACK, WHITE):
+                # This case means that the move m is not one of light-player
+                # but one of dark-player because light-player had no choice
+                # but to pass his turn.
+                light_states.append(game.getState())
+                dark_states.append(game.getState())
+                game.takeAction(m, DARK_PLAYER)
+                next_mover = LIGHT_PLAYER
+            else:
+                # unexpcted behavior
+                raise ActionError("This move is invalid for both players!")
+
+    if normalize_state:
+        for i, s in enumerate(dark_states):
+            dark_states[i] = normalizeState(s)[1]
+        for i, s in enumerate(light_states):
+            light_states[i] = normalizeState(s)[1]
+    if normalize_disc:
+        for i, s in enumerate(dark_states):
+            dark_states[i] = normalizeDisc(s)
+        for i, s in enumerate(light_states):
+            light_states[i] = normalizeDisc(s)
+    if flatten:
+        for i, s in enumerate(dark_states):
+            dark_states[i] = s.flatten()
+        for i, s in enumerate(light_states):
+            light_states[i] = s.flatten()
+    
+    return (dark_states, light_states)
+
+
+def getPlayerFromStateChange(before, after, disc_normalized=False):
+    num_black_before = 0
+    num_black_after = 0
+    if disc_normalized:
+        num_black_before = before.flatten().tolist().count(1)
+        num_black_after = after.flatten().tolist().count(1)
+    else:
+        num_black_before = before.flatten().tolist().count(BLACK)
+        num_black_after = after.flatten().tolist().count(BLACK)
+    if num_black_before < num_black_after:
+        return DARK_PLAYER
+    elif num_black_before > num_black_after:
+        return LIGHT_PLAYER
+    else:  # maybe same state
+        raise ValueError("invalid consequence of states!")

@@ -2,3 +2,4 @@ __pycache__/
 records/
 models/
 othello_model_trainer.sh
+othello_model_trainer_bw.sh
